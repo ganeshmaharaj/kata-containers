@@ -21,9 +21,9 @@ shims=(
 
 # If we fail for any reason a message will be displayed
 die() {
-        msg="$*"
-        echo "ERROR: $msg" >&2
-        exit 1
+	msg="$*"
+	echo "ERROR: $msg" >&2
+	exit 1
 }
 
 function print_usage() {
@@ -34,7 +34,7 @@ function get_container_runtime() {
 
 	local runtime=$(kubectl get node $NODE_NAME -o jsonpath='{.status.nodeInfo.containerRuntimeVersion}')
 	if [ "$?" -ne 0 ]; then
-                die "invalid node name"
+		die "invalid node name"
 	fi
 	if echo "$runtime" | grep -qE 'containerd.*-k3s'; then
 		if systemctl is-active --quiet k3s-agent; then
@@ -51,6 +51,11 @@ function install_artifacts() {
 	echo "copying kata artifacts onto host"
 	cp -a /opt/kata-artifacts/opt/kata/* /opt/kata/
 	chmod +x /opt/kata/bin/*
+}
+
+function configure_kata_default_configs() {
+	sed -i "s/\(default_vcpus\).*/\1\ = $(($(lscpu | grep 'CPU(s):' | head -1 | awk '{print $2}') * 80 / 100))/g" $(grep -rl default_vcpus $(find /opt/kata/ -name "*.toml"))
+	sed -i "s/\(default_memory\).*/\1\ = $(($(grep MemTotal /proc/meminfo | awk '{print $2}') * 80 / 102400))/g" $(grep -rl default_memory $(find /opt/kata/ -name "*.toml"))
 }
 
 function configure_cri_runtime() {
@@ -92,7 +97,7 @@ function configure_different_shims_base() {
 			fi
 		fi
 
-		cat << EOT | tee "$shim_file"
+		cat <<EOT | tee "$shim_file"
 #!/bin/bash
 KATA_CONF_FILE=/opt/kata/share/defaults/kata-containers/configuration-${shim}.toml /opt/kata/bin/containerd-shim-kata-v2 "\$@"
 EOT
@@ -250,7 +255,7 @@ function main() {
 	# script requires that user is root
 	euid=$(id -u)
 	if [[ $euid -ne 0 ]]; then
-	   die  "This script must be run as root"
+		die "This script must be run as root"
 	fi
 
 	runtime=$(get_container_runtime)
@@ -287,6 +292,7 @@ function main() {
 		install)
 
 			install_artifacts
+			configure_kata_default_configs
 			configure_cri_runtime "$runtime"
 			kubectl label node "$NODE_NAME" --overwrite katacontainers.io/kata-runtime=true
 			;;
@@ -306,7 +312,7 @@ function main() {
 	fi
 
 	#It is assumed this script will be called as a daemonset. As a result, do
-        # not return, otherwise the daemon will restart and rexecute the script
+	# not return, otherwise the daemon will restart and rexecute the script
 	sleep infinity
 }
 
