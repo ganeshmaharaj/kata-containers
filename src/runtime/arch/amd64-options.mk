@@ -23,3 +23,8 @@ ACRNCTLCMD := acrnctl
 
 # cloud-hypervisor binary name
 CLHCMD := cloud-hypervisor
+
+# TDX specific changes
+QEMUTDXCMD := qemu-system-x86_64-tdx
+CPUTDXFEATURES := "pmu=off,-kvm-steal-time"
+KERNELTDXPARAMS := "force_tdx_guest\ tdx_disable_filter"
