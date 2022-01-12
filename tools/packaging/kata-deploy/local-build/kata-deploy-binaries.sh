@@ -68,6 +68,7 @@ options:
 	firecracker
 	kernel
 	kernel-experimental
+	kernel-tdx
 	qemu
 	rootfs-image
 	rootfs-initrd
@@ -95,13 +96,20 @@ install_kernel() {
 	DESTDIR="${destdir}" PREFIX="${prefix}" "${kernel_builder}" -f -v "${kernel_version}"
 }
 
-
 #Install experimental kernel asset
 install_experimental_kernel() {
 	info "build experimental kernel"
 	export kernel_version="$(yq r $versions_yaml assets.kernel-experimental.tag)"
 	info "Kernel version ${kernel_version}"
 	DESTDIR="${destdir}" PREFIX="${prefix}" "${kernel_builder}" -f -b experimental -v ${kernel_version}
+}
+
+install_tdx_kernel() {
+	info "build experimental kernel"
+	export kernel_version="$(yq r $versions_yaml assets.kernel-tdx.tag)"
+	export kernel_url="$(yq r $versions_yaml assets.kernel-tdx.url)"
+	info "Kernel version ${kernel_version}"
+	DESTDIR="${destdir}" PREFIX="${prefix}" "${kernel_builder}" -f -b tdx -v ${kernel_version} -u ${kernel_url}
 }
 
 # Install static qemu asset
@@ -172,7 +180,9 @@ handle_build() {
 
 	kernel) install_kernel ;;
 
-	kernel-experimental) install_experimental_kernel;;
+	kernel-experimental) install_experimental_kernel ;;
+
+	kernel-tdx) install_tdx_kernel ;;
 
 	qemu) install_qemu ;;
 

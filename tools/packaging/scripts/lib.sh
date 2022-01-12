@@ -78,16 +78,15 @@ build_hub() {
 	popd >>/dev/null
 }
 
-arch_to_golang()
-{
+arch_to_golang() {
 	local -r arch="$1"
 
 	case "$arch" in
-		aarch64) echo "arm64";;
-		ppc64le) echo "$arch";;
-		x86_64) echo "amd64";;
-		s390x) echo "s390x";;
-		*) die "unsupported architecture: $arch";;
+	aarch64) echo "arm64" ;;
+	ppc64le) echo "$arch" ;;
+	x86_64) echo "amd64" ;;
+	s390x) echo "s390x" ;;
+	*) die "unsupported architecture: $arch" ;;
 	esac
 }
 
