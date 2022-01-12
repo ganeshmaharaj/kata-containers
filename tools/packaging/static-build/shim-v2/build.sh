@@ -37,6 +37,7 @@ sudo docker run --rm -i -v "${repo_root_dir}:${repo_root_dir}" \
 	bash -c "make PREFIX="${PREFIX}" DESTDIR="${DESTDIR}" install"
 
 sudo sed -i -e '/^initrd =/d' "${DESTDIR}/${PREFIX}/share/defaults/kata-containers/configuration-qemu.toml"
+sudo sed -i -e '/^initrd =/d' "${DESTDIR}/${PREFIX}/share/defaults/kata-containers/configuration-qemu-tdx.toml"
 sudo sed -i -e '/^initrd =/d' "${DESTDIR}/${PREFIX}/share/defaults/kata-containers/configuration-fc.toml"
 
 pushd "${DESTDIR}/${PREFIX}/share/defaults/kata-containers"
