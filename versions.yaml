@@ -110,6 +110,12 @@ assets:
       url: "https://github.com/qemu/qemu"
       version: "7a800cf9496fddddf71b21a00991e0ec757a170a"
 
+    qemu-tdx:
+      description: "QEMU with TDX support"
+      url: "https://github.com/intel/qemu-tdx"
+      version: "tdx-qemu-2021.11.29-v6.0.0-rc1-mvp"
+
+
   image:
     description: |
       Root filesystem disk image used to boot the guest virtual

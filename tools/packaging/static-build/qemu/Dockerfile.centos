@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Ant Group
 #
 # SPDX-License-Identifier: Apache-2.0
-from ubuntu:20.04
+from centos:8
 
 
 WORKDIR /root/qemu
@@ -12,43 +12,12 @@ WORKDIR /root/qemu
 ARG CACHE_TIMEOUT
 RUN echo "$CACHE_TIMEOUT"
 
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get --no-install-recommends install -y \
-	    apt-utils \
-	    autoconf \
-	    automake \
-	    bc \
-	    bison \
-	    ca-certificates \
-	    cpio \
-	    flex \
-	    gawk \
-	    libaudit-dev \
-	    libblkid-dev \
-	    libcap-dev \
-	    libcap-ng-dev \
-	    libdw-dev \
-	    libelf-dev \
-	    libffi-dev \
-	    libglib2.0-0 \
-	    libglib2.0-dev \
-	    libglib2.0-dev git \
-	    libltdl-dev \
-	    libmount-dev \
-	    libpixman-1-dev \
-	    libselinux1-dev \
-	    libtool \
-	    make \
-	    ninja-build \
-	    pkg-config \
-	    libseccomp-dev \
-	    libseccomp2 \
-	    python \
-	    python-dev \
-	    rsync \
-	    zlib1g-dev
+RUN dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    dnf install -y dnf-plugins-core && \
+    dnf config-manager --set-enabled powertools
 
-RUN [ "$(uname -m)" != "s390x" ] && apt-get install -y libpmem-dev || true
+RUN dnf install -y meson python3 make gcc glib2-devel git bzip2 libseccomp-devel libcap-ng-devel pixman-devel zlib-devel librados-devel librbd-devel diffutils
+RUN [ "$(uname -m)" != "s390x" ] && dnf install -y libpmem-devel || true
 
 ARG QEMU_REPO
 

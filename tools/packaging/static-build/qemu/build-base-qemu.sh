@@ -17,6 +17,7 @@ packaging_dir="${script_dir}/../.."
 qemu_destdir="/tmp/qemu-static/"
 container_engine="${USE_PODMAN:+podman}"
 container_engine="${container_engine:-docker}"
+docker_file="${docker_file:-Dockerfile}"
 
 qemu_repo="${qemu_repo:-$1}"
 qemu_version="${qemu_version:-$2}"
@@ -34,7 +35,7 @@ prefix="${prefix:-"/opt/kata"}"
 
 CACHE_TIMEOUT=$(date +"%Y-%m-%d")
 
-sudo "${container_engine}" build \
+sudo -E "${container_engine}" build \
 	--build-arg CACHE_TIMEOUT="${CACHE_TIMEOUT}" \
 	--build-arg BUILD_SUFFIX="${build_suffix}" \
 	--build-arg http_proxy="${http_proxy}" \
@@ -45,10 +46,10 @@ sudo "${container_engine}" build \
 	--build-arg QEMU_TARBALL="${qemu_tar}" \
 	--build-arg PREFIX="${prefix}" \
 	"${packaging_dir}" \
-	-f "${script_dir}/Dockerfile" \
+	-f "${script_dir}/${docker_file}" \
 	-t qemu-static
 
-sudo "${container_engine}" run \
+sudo -E "${container_engine}" run \
 	--rm \
 	-i \
 	-v "${PWD}":/share qemu-static \
