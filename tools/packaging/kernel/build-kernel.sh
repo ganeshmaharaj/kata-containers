@@ -37,6 +37,8 @@ readonly GV_NVIDIA="nvidia"
 
 #Path to kernel directory
 kernel_path=""
+# URL to pull kernel source/tarball
+kernel_url=""
 #Experimental kernel support. Pull from virtio-fs GitLab instead of kernel.org
 build_type=""
 #Force generate config when setup
@@ -119,45 +121,51 @@ get_kernel() {
 	[ -n "${kernel_path}" ] || die "kernel_path not provided"
 	[ ! -d "${kernel_path}" ] || die "kernel_path already exist"
 
+	#Remove extra 'v'
+	version=${version#v}
 
+	major_version=$(echo "${version}" | cut -d. -f1)
+	kernel_tarball="linux-${version}.tar.xz"
 
-		#Remove extra 'v'
-		version=${version#v}
+	if [ ! -f sha256sums.asc ] || ! grep -q "${kernel_tarball}" sha256sums.asc; then
+		shasum_url="https://cdn.kernel.org/pub/linux/kernel/v${major_version}.x/sha256sums.asc"
+		info "Download kernel checksum file: sha256sums.asc from ${shasum_url}"
+		curl --fail -OL "${shasum_url}"
+	fi
+	grep "${kernel_tarball}" sha256sums.asc >"${kernel_tarball}.sha256"
 
-		major_version=$(echo "${version}" | cut -d. -f1)
-		kernel_tarball="linux-${version}.tar.xz"
+	if [ -f "${kernel_tarball}" ] && ! sha256sum -c "${kernel_tarball}.sha256"; then
+		info "invalid kernel tarball ${kernel_tarball} removing "
+		rm -f "${kernel_tarball}"
+	fi
+	if [ ! -f "${kernel_tarball}" ]; then
+		info "Download kernel version ${version}"
+		info "Download kernel"
+		curl --fail -OL "https://www.kernel.org/pub/linux/kernel/v${major_version}.x/${kernel_tarball}"
+	else
+		info "kernel tarball already downloaded"
+	fi
 
-                if [ ! -f sha256sums.asc ] || ! grep -q "${kernel_tarball}" sha256sums.asc; then
-                        shasum_url="https://cdn.kernel.org/pub/linux/kernel/v${major_version}.x/sha256sums.asc"
-                        info "Download kernel checksum file: sha256sums.asc from ${shasum_url}"
-                        curl --fail -OL "${shasum_url}"
-                fi
-                grep "${kernel_tarball}" sha256sums.asc >"${kernel_tarball}.sha256"
+	sha256sum -c "${kernel_tarball}.sha256"
 
-		if [ -f "${kernel_tarball}" ] && ! sha256sum -c "${kernel_tarball}.sha256"; then
-			info "invalid kernel tarball ${kernel_tarball} removing "
-			rm -f "${kernel_tarball}"
-		fi
-		if [ ! -f "${kernel_tarball}" ]; then
-			info "Download kernel version ${version}"
-			info "Download kernel"
-			curl --fail -OL "https://www.kernel.org/pub/linux/kernel/v${major_version}.x/${kernel_tarball}"
-		else
-			info "kernel tarball already downloaded"
-		fi
+	tar xf "${kernel_tarball}"
 
-		sha256sum -c "${kernel_tarball}.sha256"
-
-		tar xf "${kernel_tarball}"
-
-		mv "linux-${version}" "${kernel_path}"
+	mv "linux-${version}" "${kernel_path}"
 }
 
 get_major_kernel_version() {
 	local version="${1}"
 	[ -n "${version}" ] || die "kernel version not provided"
-	major_version=$(echo "${version}" | cut -d. -f1)
-	minor_version=$(echo "${version}" | cut -d. -f2)
+
+	if [[ ${build_type} == "tdx" ]]; then
+		major_version=$(echo "${version}" | cut -d. -f1)
+		major_version="${major_version##*v}"
+		minor_version=$(echo "${version}" | cut -d. -f2)
+		minor_version="${minor_version%-*}"
+	else
+		major_version=$(echo "${version}" | cut -d. -f1)
+		minor_version=$(echo "${version}" | cut -d. -f2)
+	fi
 	echo "${major_version}.${minor_version}"
 }
 
@@ -348,21 +356,68 @@ setup_kernel() {
 	(
 	cd "${kernel_path}" || exit 1
 
-	# Apply version specific patches
-	${packaging_scripts_dir}/apply_patches.sh "${patches_dir_for_version}"
+		# Apply version specific patches
+		${packaging_scripts_dir}/apply_patches.sh "${patches_dir_for_version}"
 
-	# Apply version specific patches for build_type build
-	if [ "${build_type}" == "true" ] ;then
-		info "Apply build_type patches from ${build_type_patches_dir}"
-		${packaging_scripts_dir}/apply_patches.sh "${build_type_patches_dir}"
+		# Apply version specific patches for build_type build
+		if [ "${build_type}" == "true" ]; then
+			info "Apply build_type patches from ${build_type_patches_dir}"
+			${packaging_scripts_dir}/apply_patches.sh "${build_type_patches_dir}"
+		fi
+
+		[ -n "${hypervisor_target}" ] || hypervisor_target="kvm"
+		[ -n "${kernel_config_path}" ] || kernel_config_path=$(get_default_kernel_config "${kernel_version}" "${hypervisor_target}" "${arch_target}" "${kernel_path}")
+
+		info "Copying config file from: ${kernel_config_path}"
+		cp "${kernel_config_path}" ./.config
+		make oldconfig
+	)
+}
+
+clone_kernel() {
+	local kernel_url=${1:-}
+	local kernel_path=${2:-}
+	[ -n "${kernel_url}" ] || die "kernel_url not provided"
+	[ -n "${kernel_path}" ] || die "kernel_path not provided"
+
+	if [ -d "$kernel_path" ]; then
+		info "${kernel_path} already exist"
+		info "force checking out tag"
+		pushd ${kernel_path}
+		git checkout ${kernel_version}
+	else
+		git clone ${kernel_url} ${kernel_path} -b ${kernel_version}
 	fi
 
-	[ -n "${hypervisor_target}" ] || hypervisor_target="kvm"
-	[ -n "${kernel_config_path}" ] || kernel_config_path=$(get_default_kernel_config "${kernel_version}" "${hypervisor_target}" "${arch_target}" "${kernel_path}")
+	get_config_and_patches
 
-	info "Copying config file from: ${kernel_config_path}"
-	cp "${kernel_config_path}" ./.config
-	make oldconfig
+	[ -d "${patches_path}" ] || die " patches path '${patches_path}' does not exist"
+
+	local major_kernel
+	major_kernel=$(get_major_kernel_version "${kernel_version}")
+	local patches_dir_for_version="${patches_path}/${major_kernel}.x"
+	local build_type_patches_dir="${patches_path}/${major_kernel}.x/${build_type}"
+
+	[ -n "${arch_target}" ] || arch_target="$(uname -m)"
+	arch_target=$(arch_to_kernel "${arch_target}")
+	(
+		cd "${kernel_path}" || exit 1
+
+		# Apply version specific patches
+		${packaging_scripts_dir}/apply_patches.sh "${patches_dir_for_version}"
+
+		# Apply version specific patches for build_type build
+		if [ "${build_type}" == "true" ]; then
+			info "Apply build_type patches from ${build_type_patches_dir}"
+			${packaging_scripts_dir}/apply_patches.sh "${build_type_patches_dir}"
+		fi
+
+		[ -n "${hypervisor_target}" ] || hypervisor_target="kvm"
+		[ -n "${kernel_config_path}" ] || kernel_config_path=$(get_default_kernel_config "${kernel_version}" "${hypervisor_target}" "${arch_target}" "${kernel_path}")
+
+		info "Copying config file from: ${kernel_config_path}"
+		cp "${kernel_config_path}" ./.config
+		make oldconfig
 	)
 }
 
@@ -438,53 +493,56 @@ install_kata() {
 }
 
 main() {
-	while getopts "a:b:c:defg:hk:p:t:v:x:" opt; do
+	while getopts "a:b:c:defg:hk:p:t:u:v:x:" opt; do
 		case "$opt" in
-			a)
-				arch_target="${OPTARG}"
-				;;
-			b)
-				build_type="${OPTARG}"
-				;;
-			c)
-				kernel_config_path="${OPTARG}"
-				;;
-			d)
-				PS4=' Line ${LINENO}: '
-				set -x
-				;;
-			e)
-				build_type="experimental"
-				;;
-			f)
-				force_setup_generate_config="true"
-				;;
-			g)
-				gpu_vendor="${OPTARG}"
-				[[ "${gpu_vendor}" == "${GV_INTEL}" || "${gpu_vendor}" == "${GV_NVIDIA}" ]] || die "GPU vendor only support intel and nvidia"
-				;;
-			h)
-				usage 0
-				;;
-			k)
-				kernel_path="${OPTARG}"
-				;;
-			p)
-				patches_path="${OPTARG}"
-				;;
-			t)
-				hypervisor_target="${OPTARG}"
-				;;
-			v)
-				kernel_version="${OPTARG}"
-				;;
-			x)
-				conf_guest="${OPTARG}"
-				case "$conf_guest" in
-					sev) ;;
-					*) die "Confidential guest type '$conf_guest' not supported" ;;
-				esac
-				;;
+		a)
+			arch_target="${OPTARG}"
+			;;
+		b)
+			build_type="${OPTARG}"
+			;;
+		c)
+			kernel_config_path="${OPTARG}"
+			;;
+		d)
+			PS4=' Line ${LINENO}: '
+			set -x
+			;;
+		e)
+			build_type="experimental"
+			;;
+		f)
+			force_setup_generate_config="true"
+			;;
+		g)
+			gpu_vendor="${OPTARG}"
+			[[ "${gpu_vendor}" == "${GV_INTEL}" || "${gpu_vendor}" == "${GV_NVIDIA}" ]] || die "GPU vendor only support intel and nvidia"
+			;;
+		h)
+			usage 0
+			;;
+		k)
+			kernel_path="${OPTARG}"
+			;;
+		p)
+			patches_path="${OPTARG}"
+			;;
+		t)
+			hypervisor_target="${OPTARG}"
+			;;
+		u)
+			kernel_url="${OPTARG}"
+			;;
+		v)
+			kernel_version="${OPTARG}"
+			;;
+		x)
+			conf_guest="${OPTARG}"
+			case "$conf_guest" in
+			sev) ;;
+			*) die "Confidential guest type '$conf_guest' not supported" ;;
+			esac
+			;;
 		esac
 	done
 
@@ -498,12 +556,25 @@ main() {
 	if [ -z "$kernel_version" ]; then
 		if [[ ${build_type} == "experimental" ]]; then
 			kernel_version=$(get_from_kata_deps "assets.kernel-experimental.tag")
+		elif [[ ${build_type} == "tdx" ]]; then
+			kernel_version=$(get_from_kata_deps "assets.kernel-tdx.tag")
 		else
 			kernel_version=$(get_from_kata_deps "assets.kernel.version")
 		fi
 	fi
 	#Remove extra 'v'
 	kernel_version="${kernel_version#v}"
+
+	# If not kernel url take it from versions.yaml
+	if [ -z "$kernel_url" ]; then
+    if [[ ${build_type} == "experimental" ]]; then
+      kernel_url=$(get_from_kata_deps "assets.kernel-experimental.url")
+    elif [[ ${build_type} == "tdx" ]]; then
+			kernel_url=$(get_from_kata_deps "assets.kernel-tdx.url")
+		else
+			kernel_url=$(get_from_kata_deps "assets.kernel.url")
+		fi
+	fi
 
 	if [ -z "${kernel_path}" ]; then
 		config_version=$(get_config_version)
@@ -518,21 +589,25 @@ main() {
 	info "Kernel version: ${kernel_version}"
 
 	case "${subcmd}" in
-		build)
-			build_kernel "${kernel_path}"
-			;;
-		install)
-			build_kernel "${kernel_path}"
-			install_kata "${kernel_path}"
-			;;
-		setup)
+	build)
+		build_kernel "${kernel_path}"
+		;;
+	install)
+		build_kernel "${kernel_path}"
+		install_kata "${kernel_path}"
+		;;
+	setup)
+		if [[ ${build_type} == "tdx" ]]; then
+			clone_kernel "${kernel_url}" "${kernel_path}"
+		else
 			setup_kernel "${kernel_path}"
-			[ -d "${kernel_path}" ] || die "${kernel_path} does not exist"
-			echo "Kernel source ready: ${kernel_path} "
-			;;
-		*)
-			usage 1
-			;;
+		fi
+		[ -d "${kernel_path}" ] || die "${kernel_path} does not exist"
+		echo "Kernel source ready: ${kernel_path} "
+		;;
+	*)
+		usage 1
+		;;
 
 	esac
 }
