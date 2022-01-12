@@ -17,13 +17,13 @@ qemu_version="${qemu_version:-}"
 
 if [ -z "$qemu_repo" ]; then
 	info "Get qemu information from runtime versions.yaml"
-	qemu_url=$(get_from_kata_deps "assets.hypervisor.qemu-experimental.url")
+	qemu_url=$(get_from_kata_deps "assets.hypervisor.qemu-tdx.url")
 	[ -n "$qemu_url" ] || die "failed to get qemu url"
 	qemu_repo="${qemu_url}.git"
 fi
 [ -n "$qemu_repo" ] || die "failed to get qemu repo"
 
-[ -n "$qemu_version" ] || qemu_version=$(get_from_kata_deps "assets.hypervisor.qemu-experimental.version")
+[ -n "$qemu_version" ] || qemu_version=$(get_from_kata_deps "assets.hypervisor.qemu-tdx.version")
 [ -n "$qemu_version" ] || die "failed to get qemu version"
 
-static="true" "${script_dir}/build-base-qemu.sh" "${qemu_repo}" "${qemu_version}" "-experimental" "kata-static-qemu-experimental.tar.gz"
+docker_file="Dockerfile.centos" "${script_dir}/build-base-qemu.sh" "${qemu_repo}" "${qemu_version}" "-tdx" "kata-static-qemu-tdx.tar.gz"

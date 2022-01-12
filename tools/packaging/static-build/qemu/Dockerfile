@@ -55,6 +55,11 @@ ARG QEMU_REPO
 ARG QEMU_VERSION
 ARG PREFIX
 ARG BUILD_SUFFIX
+ARG static
+RUN PREFIX="${PREFIX}" /root/configure-hypervisor.sh "${static}" "kata-qemu${BUILD_SUFFIX}" | xargs ./configure \
+	--with-pkgversion="kata-static${BUILD_SUFFIX}"
+
+RUN make -j$(nproc)
 ARG QEMU_DESTDIR
 ARG QEMU_TARBALL
 

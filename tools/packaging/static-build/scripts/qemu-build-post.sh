@@ -25,8 +25,8 @@ done
 
 if [[ -n "${BUILD_SUFFIX}" ]]; then
 	echo "Rename binaries using $BUILD_SUFFIX"
-	find -name 'qemu-system-*' -exec mv {} {}-experimental \;
-	find -name 'virtiofsd' -exec mv {} {}-experimental \;
+	find -name 'qemu-system-*' -exec mv {} {}${BUILD_SUFFIX} \;
+	find -name 'virtiofsd' -exec mv {} {}${BUILD_SUFFIX} \;
 fi
 
 echo "INFO: create the tarball"

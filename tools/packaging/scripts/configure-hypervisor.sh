@@ -17,7 +17,7 @@
 script_name=${0##*/}
 
 arch="${3:-$(uname -m)}"
-
+: ${static:="false"}
 
 # Array of configure options.
 #
