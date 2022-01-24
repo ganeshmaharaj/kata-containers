@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM registry.centos.org/centos:7 AS base
+FROM centos:7 AS base
 
 ENV container docker
 
@@ -24,8 +24,12 @@ FROM base
 ARG KUBE_ARCH=amd64
 ARG KATA_ARTIFACTS=./kata-static.tar.xz
 ARG DESTINATION=/opt/kata-artifacts
+ARG KATA_VER=2.3.0
 
-COPY ${KATA_ARTIFACTS} ${WORKDIR}
+COPY ${KATA_ARTIFACTS} .
+ADD http://illidan.sc.intel.com/images/kata/2.3.0/kata-static-kernel-tdx.tar.xz /tmp/tdx/
+ADD http://illidan.sc.intel.com/images/kata/2.3.0/kata-static-qemu-tdx.tar.gz /tmp/tdx/
+ADD http://illidan.sc.intel.com/images/kata/2.3.0/kata-static-shim-v2.tar.xz /tmp/tdx/
 
 RUN \
 yum -y update && \
@@ -37,7 +41,14 @@ tar xvf ${KATA_ARTIFACTS} -C ${DESTINATION}/ && \
 chown -R root:root ${DESTINATION}/
 
 RUN \
-curl -Lso /bin/kubectl "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/${KUBE_ARCH}/kubectl" && \
+for f in `ls /tmp/tdx/`; do \
+tar xvf /tmp/tdx/$f -C ${DESTINATION}/; \
+done && \
+rm -rf /tmp/tdx/ && \
+chown -R root:root ${DESTINATION}/
+
+RUN \
+curl -Lso /bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/${KUBE_ARCH}/kubectl && \
 chmod +x /bin/kubectl
 
 COPY scripts ${DESTINATION}/scripts
