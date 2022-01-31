@@ -22,14 +22,13 @@ CMD ["/usr/sbin/init"]
 FROM base
 
 ARG KUBE_ARCH=amd64
-ARG KATA_ARTIFACTS=./kata-static.tar.xz
-ARG DESTINATION=/opt/kata-artifacts
 ARG KATA_VER=2.3.0
+ARG KATA_ARTIFACTS=kata-static-${KATA_VER}-x86_64.tar.xz
+ARG DESTINATION=/opt/kata-artifacts
 
-COPY ${KATA_ARTIFACTS} .
-ADD http://illidan.sc.intel.com/images/kata/2.3.0/kata-static-kernel-tdx.tar.xz /tmp/tdx/
-ADD http://illidan.sc.intel.com/images/kata/2.3.0/kata-static-qemu-tdx.tar.gz /tmp/tdx/
-ADD http://illidan.sc.intel.com/images/kata/2.3.0/kata-static-shim-v2.tar.xz /tmp/tdx/
+ADD https://github.com/kata-containers/kata-containers/releases/download/${KATA_VER}/${KATA_ARTIFACTS} .
+COPY ./local-build/build/kata-static-kernel-tdx.tar.xz /tmp/tdx/
+COPY ./local-build/build/kata-static-shim-v2.tar.xz /tmp/tdx/
 
 RUN \
 yum -y update && \
