@@ -171,7 +171,7 @@ assets:
   kernel-tdx:
     description: "Linux kernel with TDX support"
     url: "https://github.com/intel/tdx"
-    tag: "tdx-guest-v5.13-1"
+    tag: "tdx-guest-v5.15-3"
 
 externals:
   description: "Third-party projects used by the system"
