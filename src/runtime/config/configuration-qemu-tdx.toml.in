@@ -5,7 +5,7 @@
 
 # XXX: WARNING: this file is auto-generated.
 # XXX:
-# XXX: Source file: "@CONFIG_QEMU_IN@"
+# XXX: Source file: "@CONFIG_QEMUTDX_IN@"
 # XXX: Project:
 # XXX:   Name: @PROJECT_NAME@
 # XXX:   Type: @PROJECT_TYPE@
@@ -456,7 +456,7 @@ kernel_modules=[]
 
 # Agent connection dialing timeout value in seconds
 # (default: 30)
-#dial_timeout = 30
+dial_timeout = 300
 
 [netmon]
 # If enabled, the network monitoring process gets started when the
