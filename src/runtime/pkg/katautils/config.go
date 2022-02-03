@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 Intel Corporation
+// Copyright (c) 2018-2022 Intel Corporation
 // Copyright (c) 2018 HyperHQ Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -80,6 +80,7 @@ type hypervisor struct {
 	Initrd                  string   `toml:"initrd"`
 	Image                   string   `toml:"image"`
 	Firmware                string   `toml:"firmware"`
+	FirmwareVolume          string   `toml:"firmware_volume"`
 	MachineAccelerators     string   `toml:"machine_accelerators"`
 	CPUFeatures             string   `toml:"cpu_features"`
 	KernelParams            string   `toml:"kernel_params"`
@@ -236,6 +237,19 @@ func (h hypervisor) firmware() (string, error) {
 			return "", nil
 		}
 		p = defaultFirmwarePath
+	}
+
+	return ResolvePath(p)
+}
+
+func (h hypervisor) firmwareVolume() (string, error) {
+	p := h.FirmwareVolume
+
+	if p == "" {
+		if defaultFirmwareVolumePath == "" {
+			return "", nil
+		}
+		p = defaultFirmwareVolumePath
 	}
 
 	return ResolvePath(p)
@@ -626,6 +640,11 @@ func newQemuHypervisorConfig(h hypervisor) (vc.HypervisorConfig, error) {
 		return vc.HypervisorConfig{}, err
 	}
 
+	firmwareVolume, err := h.firmwareVolume()
+	if err != nil {
+		return vc.HypervisorConfig{}, err
+	}
+
 	machineAccelerators := h.machineAccelerators()
 	cpuFeatures := h.cpuFeatures()
 	kernelParams := h.kernelParams()
@@ -668,6 +687,7 @@ func newQemuHypervisorConfig(h hypervisor) (vc.HypervisorConfig, error) {
 		InitrdPath:              initrd,
 		ImagePath:               image,
 		FirmwarePath:            firmware,
+		FirmwareVolumePath:      firmwareVolume,
 		PFlash:                  pflashes,
 		MachineAccelerators:     machineAccelerators,
 		CPUFeatures:             cpuFeatures,
@@ -1036,6 +1056,7 @@ func GetDefaultHypervisorConfig() vc.HypervisorConfig {
 		ImagePath:               defaultImagePath,
 		InitrdPath:              defaultInitrdPath,
 		FirmwarePath:            defaultFirmwarePath,
+		FirmwareVolumePath:      defaultFirmwareVolumePath,
 		MachineAccelerators:     defaultMachineAccelerators,
 		CPUFeatures:             defaultCPUFeatures,
 		HypervisorMachineType:   defaultMachineType,
