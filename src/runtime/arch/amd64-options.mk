@@ -25,6 +25,5 @@ ACRNCTLCMD := acrnctl
 CLHCMD := cloud-hypervisor
 
 # TDX specific changes
-QEMUTDXCMD := qemu-kvm
 CPUTDXFEATURES := "pmu=off,-kvm-steal-time"
 KERNELTDXPARAMS := "force_tdx_guest\ tdx_disable_filter"
