@@ -22,7 +22,7 @@ CMD ["/usr/sbin/init"]
 FROM base
 
 ARG KUBE_ARCH=amd64
-ARG KATA_VER=2.3.0
+ARG KATA_VER=2.3.2
 ARG KATA_ARTIFACTS=kata-static-${KATA_VER}-x86_64.tar.xz
 ARG DESTINATION=/opt/kata-artifacts
 
