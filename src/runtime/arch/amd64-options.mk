@@ -11,6 +11,9 @@ MACHINEACCELERATORS :=
 CPUFEATURES := pmu=off
 
 QEMUCMD := qemu-system-x86_64
+# centos stream has decommissioned QEMUCMD and now only use the below one. Will
+# replace all qemu configs with it for internal use
+QEMUCENTOSCMD := qemu-kvm
 
 # Firecracker binary name
 FCCMD := firecracker
