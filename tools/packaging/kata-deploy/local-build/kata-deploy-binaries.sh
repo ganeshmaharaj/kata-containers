@@ -24,6 +24,7 @@ readonly clh_builder="${static_build_dir}/cloud-hypervisor/build-static-clh.sh"
 readonly firecracker_builder="${static_build_dir}/firecracker/build-static-firecracker.sh"
 readonly kernel_builder="${static_build_dir}/kernel/build.sh"
 readonly qemu_builder="${static_build_dir}/qemu/build-static-qemu.sh"
+readonly qemu_tdx_builder="${static_build_dir}/qemu/build-static-qemu-tdx.sh"
 readonly shimv2_builder="${static_build_dir}/shim-v2/build.sh"
 
 readonly rootfs_builder="${repo_root_dir}/tools/packaging/guest-image/build_image.sh"
@@ -70,6 +71,7 @@ options:
 	kernel-experimental
 	kernel-tdx
 	qemu
+	qemu-tdx
 	rootfs-image
 	rootfs-initrd
 	shim-v2
@@ -119,6 +121,14 @@ install_qemu() {
 	export qemu_version="$(yq r $versions_yaml assets.hypervisor.qemu.version)"
 	"${qemu_builder}"
 	tar xvf "${builddir}/kata-static-qemu.tar.gz" -C "${destdir}"
+}
+
+install_qemu_tdx() {
+	info "build static qemu"
+	export qemu_repo="$(yq r $versions_yaml assets.hypervisor.qemu-tdx.url)"
+	export qemu_version="$(yq r $versions_yaml assets.hypervisor.qemu-tdx.version)"
+	"${qemu_tdx_builder}"
+	tar xvf "${builddir}/kata-static-qemu-tdx.tar.gz" -C "${destdir}"
 }
 
 # Install static firecracker asset
@@ -171,6 +181,7 @@ handle_build() {
 		install_initrd
 		install_kernel
 		install_qemu
+		install_qemu_tdx
 		install_shimv2
 		;;
 
@@ -185,6 +196,8 @@ handle_build() {
 	kernel-tdx) install_tdx_kernel ;;
 
 	qemu) install_qemu ;;
+
+	qemu-tdx) install_qemu_tdx ;;
 
 	rootfs-image) install_image ;;
 
@@ -214,6 +227,7 @@ main() {
 		kernel
 		kernel-experimental
 		qemu
+		qemu-tdx
 		rootfs-image
 		rootfs-initrd
 		shim-v2

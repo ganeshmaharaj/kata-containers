@@ -26,4 +26,4 @@ fi
 [ -n "$qemu_version" ] || qemu_version=$(get_from_kata_deps "assets.hypervisor.qemu-tdx.version")
 [ -n "$qemu_version" ] || die "failed to get qemu version"
 
-docker_file="Dockerfile.centos" "${script_dir}/build-base-qemu.sh" "${qemu_repo}" "${qemu_version}" "-tdx" "kata-static-qemu-tdx.tar.gz"
+"${script_dir}/build-base-qemu.sh" "${qemu_repo}" "${qemu_version}" "-tdx" "kata-static-qemu-tdx.tar.gz"

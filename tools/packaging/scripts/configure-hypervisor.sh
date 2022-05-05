@@ -308,7 +308,6 @@ generate_qemu_options() {
 		;;
 	esac
 	qemu_options+=(size:--disable-qom-cast-debug)
-	qemu_options+=(size:--disable-tcmalloc)
 
 	# Disable libudev for static build
 	if gt_eq "${qemu_version}" "5.2.0" ; then

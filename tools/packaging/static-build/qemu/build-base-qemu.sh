@@ -18,6 +18,7 @@ qemu_destdir="/tmp/qemu-static/"
 container_engine="${USE_PODMAN:+podman}"
 container_engine="${container_engine:-docker}"
 docker_file="${docker_file:-Dockerfile}"
+static="${static:-"true"}"
 
 qemu_repo="${qemu_repo:-$1}"
 qemu_version="${qemu_version:-$2}"
@@ -45,6 +46,7 @@ sudo -E "${container_engine}" build \
 	--build-arg QEMU_VERSION="${qemu_version}" \
 	--build-arg QEMU_TARBALL="${qemu_tar}" \
 	--build-arg PREFIX="${prefix}" \
+  --build-arg static="${static}" \
 	"${packaging_dir}" \
 	-f "${script_dir}/${docker_file}" \
 	-t qemu-static
